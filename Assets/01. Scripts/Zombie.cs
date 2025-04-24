@@ -122,6 +122,18 @@ public class Zombie : LivingEntity
     // 대미지를 입었을 때 실행할 처리
     public override void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal)
     {
+        // 아직 사망하지 않은 경우에만 피격 효과 재생
+        if (!dead)
+        {
+            // 공격받은 지점과 방향으로 파티클 효과 재생
+            hitEffect.transform.position = hitPoint;
+            hitEffect.transform.rotation = Quaternion.LookRotation(hitNormal);
+            hitEffect.Play();
+
+            // 피격 효과음 재생
+            zombieAudioPlayer.PlayOneShot(hitSound);
+        }
+
         // LivingEntity의 OnDamage()를 실행하여 대미지 적용
         base.OnDamage(damage, hitPoint, hitNormal);
     }
@@ -131,10 +143,47 @@ public class Zombie : LivingEntity
     {
         // LivingEntity의 Die()를 실행하여 기본 사망 처리 실행
         base.Die();
+
+        // 다른 AI를 방해하지 않도록 자신의 모든 콜라이더를 비활성화
+        Collider[] zombieColliders = GetComponents<Collider>();
+        for (int i = 0; i < zombieColliders.Length; i++)
+        {
+            zombieColliders[i].enabled = false;
+        }
+
+        // AI 추적을 중지하고 내비메시 컴포넌트 비활성화
+        navMeshAgent.isStopped = true;
+        navMeshAgent.enabled = false;
+
+        // 사망 애니메이션 재생
+        zombieAnimator.SetTrigger("Die");
+        // 사망 효과음 재생
+        zombieAudioPlayer.PlayOneShot(deathSound);
     }
 
     private void OnTriggerStay(Collider other)
     {
+        // 자신이 사망하지 않았으며,
+        // 최근 공격 시점에서 timeBetAttack 이상 시간이 지났다면 공격 가능
+        if (!dead && timeBetAttack + lastAttackTime <= Time.time)
+        {
+            // 상대방의 LivingEntity 타입 가져오기 시도
+            LivingEntity attackTarget = other.GetComponent<LivingEntity>();
+
+            // 상대방의 LivingEntity가 자신의 추적 대상이라면 공격 실행
+            if (attackTarget != null && attackTarget == targetEntity)
+            {
+                // 최근 공격 시간 갱신
+                lastAttackTime = Time.time;
+
+                // 상대방의 피격 위치와 피격 방향을 근삿값으로 계산
+                Vector3 hitPoint = other.ClosestPoint(transform.position);
+                Vector3 hitNormal = transform.position - other.transform.position;
+
+                // 공격 실행
+                attackTarget.OnDamage(damage, hitPoint, hitNormal);
+            }
+        }
         // 트리거 충돌한 상대방 게임 오브젝트가 추적 대상이라면 공격 실행
     }
 }
