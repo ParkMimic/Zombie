@@ -38,6 +38,7 @@ public class ItemSpawner : MonoBehaviour
         }
     }
 
+    // 실제 아이템 생성 처리
     void Spawn()
     {
         // 플레이어 근처에서 내비메시 위의 랜덤 위치 가져오기
