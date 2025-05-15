@@ -67,7 +67,7 @@ public class ZombieSpawner : MonoBehaviour
         Zombie zombie = Instantiate(zombiePrefab, spawnPoint.position, spawnPoint.rotation);
 
         // 생성한 좀비의 능력치 설정
-        zombie.Setup(zombieData);
+        //zombie.Setup(zombieData);
 
         // 생성된 좀비를 리스트에 추가
         zombies.Add(zombie);

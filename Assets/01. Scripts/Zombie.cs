@@ -1,4 +1,5 @@
 using System.Collections;
+using Photon.Pun;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -51,27 +52,36 @@ public class Zombie : LivingEntity
         zombieRenderer = GetComponentInChildren<Renderer>();
     }
 
-    public void Setup(ZombieData zombieData)
+    // 좀비 AI의 초기 스펙을 결정하는 셋업 메서드
+    [PunRPC]
+    public void Setup(float newHealth, float newDamage, float newSpeed, Color skinColor)
     {
         // 체력 설정
-        startingHealth = zombieData.health;
-        health = zombieData.health;
+        startingHealth = newHealth;
+        health = newHealth;
         // 공격력 설정
-        damage = zombieData.damage;
+        damage = newDamage;
         // 내비메시 에이전트의 이동 속도 설정
-        navMeshAgent.speed = zombieData.speed;
+        navMeshAgent.speed = newSpeed;
         // 렌더러가 사용 중인 머터리얼의 컬러를 변경, 외형 색이 변함
-        zombieRenderer.material.color = zombieData.skinColor;
+        zombieRenderer.material.color = skinColor;
     }
 
     void Start()
     {
+        // 호스트가 아니라면 AI의 추적 루틴을 실행하지 않음
+        if (!PhotonNetwork.IsMasterClient) return;
+
         // 게임 오브젝트 활성화와 동시에 AI의 추적 루틴 시작
         StartCoroutine(UpdatePath());
     }
 
     void Update()
     {
+        // 호스트가 아니라면 애니메이션 파라미터를 직접 갱신하지 않음
+        // 호스트가 파라미터를 갱신하면 클라이언트에 자동으로 전달되기 때문
+        if (!PhotonNetwork.IsMasterClient) return;
+
         // 추적 대상의 존재 여부에 따라 다른 애니메이션 재생
         zombieAnimator.SetBool("HasTarget", hasTarget);
     }
@@ -120,6 +130,7 @@ public class Zombie : LivingEntity
     }
 
     // 대미지를 입었을 때 실행할 처리
+    [PunRPC]
     public override void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal)
     {
         // 아직 사망하지 않은 경우에만 피격 효과 재생
@@ -163,6 +174,9 @@ public class Zombie : LivingEntity
 
     private void OnTriggerStay(Collider other)
     {
+        // 호스트가 아니라면 공격 실행 불가
+        if (!PhotonNetwork.IsMasterClient) return;
+
         // 자신이 사망하지 않았으며,
         // 최근 공격 시점에서 timeBetAttack 이상 시간이 지났다면 공격 가능
         if (!dead && timeBetAttack + lastAttackTime <= Time.time)
